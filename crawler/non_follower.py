@@ -1,14 +1,14 @@
 from conf import Settings
 
-import logging
-import time
 import sys
+import time
+import pickle
+import logging
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common import action_chains
 
 
 class Init:
@@ -18,13 +18,24 @@ class Init:
 			filename='not_follower.log', level=logging.INFO, format='%(levelname)s: [%(asctime)s] %(message)s')
 		self.logger = logging.getLogger(__name__)
 		logging.getLogger().addHandler(logging.StreamHandler())
-		chromeOptions = webdriver.ChromeOptions()
+
+		options = webdriver.ChromeOptions()
 		prefs = {'profile.managed_default_content_settings.images': 2, 'disk-cache-size': 4096}
-		chromeOptions.add_experimental_option("prefs", prefs)
-		self.driver = webdriver.Chrome(chrome_options=chromeOptions)
+		options.add_experimental_option("prefs", prefs)
+		options.add_argument("user-data-dir=/tmp/tarun")
+		self.driver = webdriver.Chrome(chrome_options=options,executable_path='/Coding/GitHub/insta_unfollower/crawler/chromedriver')
+
+class Cookie(Init):
+
+	def saving_cookies(self):
+		pickle.dump(self.driver.get_cookies(), open("cookies.pkl", "wb"))
+
+	def loading_cookies(self):
+		for cookie in pickle.load(open("cookies.pkl", "rb")):
+			self.driver.add_cookie(cookie)
 
 
-class OpeningLinks(Init):
+class OpeningLinks(Init, Cookie):
 
 	def open_login_page(self):
 		try:
@@ -37,7 +48,7 @@ class OpeningLinks(Init):
 			sys.exit(0)
 
 
-class Credentials(OpeningLinks):
+class Credentials(OpeningLinks, Cookie):
 
 	def login(self):
 		self.open_login_page()
@@ -47,25 +58,32 @@ class Credentials(OpeningLinks):
 			self.driver.find_element_by_xpath("//input[@name='username']").send_keys(username)
 			self.driver.find_element_by_xpath("//input[@name='password']").send_keys(password)
 			self.driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/article/div/div[1]/div/form/div[3]/button').click()
-			if "Sorry" in self.driver.page_source:
+			time.sleep(1)
+			if "Sorry, your password was incorrect. " in self.driver.page_source:
 				self.logger.error("The Entered password is wrong.")
 				sys.exit(0)
 		except:
-			pass
+			sys.exit(0)
 
-	def check_if_logged(self):
+	def has_two_step(self):
+		"""If there is two step auth returns False """
 		self.login()
 		try:
 			WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, 'm0NAq')))
 		except:
 			return False
 
-	def second_auth(self):
-		if self.check_if_logged() is False:
-			n = input('enter: ')
+	def two_step_auth(self):
+		if self.has_two_step() is False:
+			n = input('Please enter the code that Instagram sent you: ')
 			self.driver.find_element_by_xpath('//*[@class="_2hvTZ pexuQ zyHYP"]').send_keys(n)
 			self.driver.find_element_by_xpath(
 				'//*[@id="react-root"]/section/main/div/article/div/div[1]/div/form/div[2]').click()
+			WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, 'mt3GC')))
+			self.saving_cookies()
+			return True
+		else:
+			self.saving_cookies()
 
 
-Credentials().second_auth()
+Credentials().open_login_page()
