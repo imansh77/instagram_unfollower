@@ -3,5 +3,5 @@
 
 class Settings:
 
-	login_username = '_izoma_'
-	login_password = 'Izoma@77!'
+	login_username = ''
+	login_password = ''
