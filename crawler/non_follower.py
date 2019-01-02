@@ -35,7 +35,7 @@ class Cookie(Init):
 			self.driver.add_cookie(cookie)
 
 
-class OpeningLinks(Init, Cookie):
+class OpeningLinks(Init):
 
 	def open_login_page(self):
 		try:
@@ -85,5 +85,24 @@ class Credentials(OpeningLinks, Cookie):
 		else:
 			self.saving_cookies()
 
+	def dismiss_offer(self):
+		self.open_login_page()
+		offer_elem = "//*[contains(text(), 'Get App')]"
+		dismiss_elem = "//*[contains(text(), 'Not Now')]"
+		try:
+			dismiss_elem = self.driver.find_element_by_xpath(dismiss_elem).click()
+		except:
+			pass
 
-Credentials().open_login_page()
+	def open_profile(self):
+		self.dismiss_offer()
+		self.driver.find_element_by_xpath('//*[@id="react-root"]/section/nav/div[2]/div/div/div[3]/div/div[3]/a').click()
+		time.sleep(5)
+
+	def open_following_tab(self):
+		self.open_profile()
+		self.driver.find_element_by_xpath('//*[@id="react-root"]/section/main/div/header/section/ul/li[3]/a').click()
+		time.sleep(3)
+
+
+Credentials().open_following_tab()
